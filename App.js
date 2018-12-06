@@ -7,16 +7,16 @@
  */
 
 import React, {Component} from 'react';
-import {Platform, SafeAreaView, StyleSheet, Text, View} from 'react-native';
+import {StyleSheet, Text, View, Dimensions} from 'react-native';
 import {observable, action, computed} from 'mobx';
 import {observer} from 'mobx-react/native';
 
-const instructions = Platform.select({
-	ios: 'Press Cmd+R to reload,\n' + 'Cmd+D or shake for dev menu',
-	android:
-		'Double tap R on your keyboard to reload,\n' +
-		'Shake or press menu button for dev menu'
-});
+// const instructions = Platform.select({
+// 	ios: 'Press Cmd+R to reload,\n' + 'Cmd+D or shake for dev menu',
+// 	android:
+// 		'Double tap R on your keyboard to reload,\n' +
+// 		'Shake or press menu button for dev menu'
+// });
 
 const tags = [
 	'中央税收法规',
@@ -36,10 +36,46 @@ const tags = [
 ];
 
 type Props = {};
+type Position = {
+	width: number,
+	height: number,
+	x: number,
+	y: number
+};
+type State = {
+	position: Array<Position>
+};
 @observer
-export default class App extends Component<Props> {
+export default class App extends Component<Props, State> {
 	@observable
 	_count: number = 0;
+
+	constructor() {
+		super();
+
+		let position = [];
+		let width = Dimensions.get('window').width;
+		let line = 1;
+		let margin = 12;
+		for (let i = 0; i < tags.length; i++) {
+			let w = tags[i].length * 15 + 32;
+			let h = 30;
+			let x =
+				i == 0 ? margin : position[i - 1].x + position[i - 1].width + margin;
+			let y = (line - 1) * (h + margin);
+
+			if (x + w > width) {
+				x = margin;
+				y += h + margin;
+				line += 1;
+			}
+			position[i] = {width: w, height: h, x, y};
+		}
+		console.log(position);
+		this.state = {
+			position
+		};
+	}
 
 	@action
 	setCount() {
@@ -51,11 +87,22 @@ export default class App extends Component<Props> {
 		return this._count;
 	}
 	render() {
-		// const {count} = this;
+		const {position} = this.state;
 		return (
 			<View style={styles.container}>
-				{tags.map((item: string) => (
-					<Text key={item} style={styles.item}>
+				{tags.map((item: string, i: number) => (
+					<Text
+						key={item}
+						style={[
+							styles.item,
+							{
+								width: position[i].width,
+								height: position[i].height,
+								left: position[i].x,
+								top: position[i].y
+							}
+						]}
+					>
 						{item}
 					</Text>
 				))}
@@ -70,7 +117,7 @@ const styles = StyleSheet.create({
 		flexWrap: 'wrap',
 		flexDirection: 'row',
 		backgroundColor: '#F5FCFF',
-		paddingTop: 48
+		marginTop: 48
 	},
 	welcome: {
 		fontSize: 20,
@@ -84,13 +131,10 @@ const styles = StyleSheet.create({
 	},
 	item: {
 		position: 'absolute',
-		paddingLeft: 16,
-		paddingRight: 16,
-		paddingTop: 8,
+		textAlign: 'center',
+		paddingTop: 6,
 		paddingBottom: 8,
 		fontSize: 15,
-		marginLeft: 12,
-		marginTop: 8,
 		borderColor: '#ddd',
 		borderWidth: 1,
 		borderRadius: 5
