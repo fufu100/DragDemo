@@ -7,7 +7,15 @@
  */
 
 import React, {Component} from 'react';
-import {StyleSheet, Text, View, Dimensions} from 'react-native';
+import {
+	StyleSheet,
+	Animated,
+	Text,
+	View,
+	PanResponder,
+	TouchableWithoutFeedback,
+	Dimensions
+} from 'react-native';
 import {observable, action, computed} from 'mobx';
 import {observer} from 'mobx-react/native';
 
@@ -39,17 +47,21 @@ type Props = {};
 type Position = {
 	width: number,
 	height: number,
-	x: number,
-	y: number
+	p: Animated.ValueXY
+	// x: number,
+	// y: number
 };
 type State = {
 	position: Array<Position>
+	// currentIndex: number
 };
 @observer
 export default class App extends Component<Props, State> {
 	@observable
 	_count: number = 0;
-
+	isMovePanResponder: boolean = false;
+	currentIndex: number = 1;
+	_panResponder: Object;
 	constructor() {
 		super();
 
@@ -61,7 +73,9 @@ export default class App extends Component<Props, State> {
 			let w = tags[i].length * 15 + 32;
 			let h = 30;
 			let x =
-				i == 0 ? margin : position[i - 1].x + position[i - 1].width + margin;
+				i == 0
+					? margin
+					: position[i - 1].p.x._value + position[i - 1].width + margin;
 			let y = (line - 1) * (h + margin);
 
 			if (x + w > width) {
@@ -69,11 +83,20 @@ export default class App extends Component<Props, State> {
 				y += h + margin;
 				line += 1;
 			}
-			position[i] = {width: w, height: h, x, y};
+			position[i] = {
+				width: w,
+				height: h,
+				p: new Animated.ValueXY()
+			};
+			position[i].p.setOffset({x, y});
+			position[i].p.addListener((callback: any) =>
+				console.log('callback', i, callback)
+			);
 		}
 		console.log(position);
 		this.state = {
-			position
+			position,
+			currentIndex: 0
 		};
 	}
 
@@ -86,25 +109,77 @@ export default class App extends Component<Props, State> {
 	get count() {
 		return this._count;
 	}
+
+	UNSAFE_componentWillMount() {
+		this._panResponder = PanResponder.create({
+			onStartShouldSetPanResponder: () => true,
+			onStartShouldSetPanResponderCapture: () => {
+				this.isMovePanResponder = false;
+				return false;
+			},
+
+			onMoveShouldSetResponderCapture: () => this.isMovePanResponder,
+			onMoveShouldSetPanResponderCapture: () => this.isMovePanResponder,
+
+			onPanResponderGrant: (e: any, gestureState: Object) => {
+				console.log('onPanResponderGrant', this.currentIndex);
+			},
+			onPanResponderMove: (e: any, gestureState: Object) => {
+				console.log(gestureState);
+				const {dx, dy} = gestureState;
+				this.state.position[this.currentIndex].p.setValue({x: dx, y: dy});
+				// Animated.event([
+				// 	null,
+				// 	{
+				// 		dx: this.state.position[this.currentIndex].p.x,
+				// 		dy: this.state.position[this.currentIndex].p.y
+				// 	}
+				// ]);
+			},
+
+			onPanResponderRelease: (e, {vx, vy}) => {}
+		});
+	}
+
+	_startDrag = (index: number) => {
+		console.log('start drag', index);
+		// this.setState({currentIndex: index});
+		this.currentIndex = index;
+		this.isMovePanResponder = true;
+	};
+
 	render() {
 		const {position} = this.state;
 		return (
 			<View style={styles.container}>
 				{tags.map((item: string, i: number) => (
-					<Text
+					<Animated.View
 						key={item}
-						style={[
-							styles.item,
-							{
-								width: position[i].width,
-								height: position[i].height,
-								left: position[i].x,
-								top: position[i].y
-							}
-						]}
+						style={{
+							transform: [
+								{translateX: position[i].p.x},
+								{translateY: position[i].p.y}
+							]
+						}}
+						{...this._panResponder.panHandlers}
+						useNativeDriver={true}
 					>
-						{item}
-					</Text>
+						<TouchableWithoutFeedback onLongPress={() => this._startDrag(i)}>
+							<Text
+								style={[
+									styles.item,
+									{
+										width: position[i].width,
+										height: position[i].height
+										// left: position[i].x,
+										// top: position[i].y,
+									}
+								]}
+							>
+								{item}
+							</Text>
+						</TouchableWithoutFeedback>
+					</Animated.View>
 				))}
 			</View>
 		);
