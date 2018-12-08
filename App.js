@@ -67,6 +67,7 @@ export default class App extends Component<Props, State> {
 
 		let position = [];
 		let width = Dimensions.get('window').width;
+		console.log(width);
 		let line = 1;
 		let margin = 12;
 		for (let i = 0; i < tags.length; i++) {
@@ -75,7 +76,7 @@ export default class App extends Component<Props, State> {
 			let x =
 				i == 0
 					? margin
-					: position[i - 1].p.x._value + position[i - 1].width + margin;
+					: position[i - 1].p.x._offset + position[i - 1].width + margin;
 			let y = (line - 1) * (h + margin);
 
 			if (x + w > width) {
@@ -89,6 +90,7 @@ export default class App extends Component<Props, State> {
 				p: new Animated.ValueXY()
 			};
 			position[i].p.setOffset({x, y});
+			// position[i].p.flattenOffset();
 			position[i].p.addListener((callback: any) =>
 				console.log('callback', i, callback)
 			);
@@ -124,8 +126,8 @@ export default class App extends Component<Props, State> {
 			onPanResponderGrant: (e: any, gestureState: Object) => {
 				console.log('onPanResponderGrant', this.currentIndex);
 			},
-			onPanResponderMove: (e: any, gestureState: Object) => {
-				console.log(gestureState);
+			onPanResponderMove: ({nativeEvent}: any, gestureState: Object) => {
+				console.log(nativeEvent, gestureState);
 				const {dx, dy} = gestureState;
 				this.state.position[this.currentIndex].p.setValue({x: dx, y: dy});
 				// Animated.event([
@@ -156,13 +158,16 @@ export default class App extends Component<Props, State> {
 					<Animated.View
 						key={item}
 						style={{
+							position: 'absolute',
+							width: position[i].width,
+							height: position[i].height,
 							transform: [
 								{translateX: position[i].p.x},
 								{translateY: position[i].p.y}
 							]
 						}}
 						{...this._panResponder.panHandlers}
-						useNativeDriver={true}
+						// useNativeDriver={true}
 					>
 						<TouchableWithoutFeedback onLongPress={() => this._startDrag(i)}>
 							<Text
